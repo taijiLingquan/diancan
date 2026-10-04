@@ -26,9 +26,6 @@ def load_config():
 
 CONFIG = load_config()
 
-# Vercel导入时初始化数据库
-init_db()
-
 
 # ============ 数据库 ============
 def get_db():
@@ -337,6 +334,10 @@ def api_reprint(order_no):
     p = Printer(CONFIG)
     result = p.print_receipt(order)
     return jsonify({"ok": result.get("ok", False), "msg": result})
+
+
+# 模块加载时初始化数据库（兼容Vercel/云平台）
+init_db()
 
 
 if __name__ == "__main__":
