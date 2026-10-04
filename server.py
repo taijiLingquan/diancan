@@ -338,10 +338,10 @@ def api_reprint(order_no):
 
 if __name__ == "__main__":
     init_db()
+    import os
+    port = int(os.environ.get("PORT", CONFIG["port"]))
     print(f"=" * 50)
     print(f"  {CONFIG['shop_name']} - 扫码点单系统已启动")
-    print(f"  顾客端: http://<本机IP>:{CONFIG['port']}/")
-    print(f"  商家后台: http://<本机IP>:{CONFIG['port']}/admin")
-    print(f"  打印提供商: {CONFIG['printer']['provider']}")
+    print(f"  端口: {port}")
     print(f"=" * 50)
-    app.run(host="0.0.0.0", port=CONFIG["port"], debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
