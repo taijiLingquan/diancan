@@ -1,0 +1,38 @@
+{
+  "shop_name": "示例餐厅",
+  "port": 5000,
+  "printer": {
+    "provider": "none",
+    "feieyun": {
+      "user": "",
+      "ukey": "",
+      "sn": "",
+      "print_num": 1
+    },
+    "direct": {
+      "host": "",
+      "port": 9100
+    }
+  },
+  "payment": {
+    "mode": "mock",
+    "wechat": {
+      "appid": "",
+      "mch_id": "",
+      "key": "",
+      "notify_url": ""
+    },
+    "alipay": {
+      "appid": "",
+      "private_key": "",
+      "public_key": "",
+      "notify_url": ""
+    }
+  },
+  "categories": [
+    {"id": 1, "name": "热销推荐"},
+    {"id": 2, "name": "主食"},
+    {"id": 3, "name": "小吃"},
+    {"id": 4, "name": "饮品"}
+  ]
+}

@@ -1,0 +1,47 @@
+# 部署到PythonAnywhere（免费云服务器，一劳永逸）
+
+## 你只需要做一次，10分钟搞定
+
+### 第1步：注册账号
+1. 浏览器打开 https://www.pythonanywhere.com
+2. 点 "Pricing & signup" → 选 "Beginner"（免费）
+3. 注册一个账号（记住你的用户名，比如叫 "mydiner"）
+
+### 第2步：上传项目
+1. 登录后点顶部 "Files" 标签
+2. 点 "Upload a file"，把 order-system.zip 传上去
+3. 然后点底部的 "Bash" 标签，输入：
+```bash
+unzip order-system.zip
+```
+
+### 第3步：配置Web应用
+1. 点顶部 "Web" 标签
+2. 点 "Add a new web app"
+3. 选 "Flask" → Python 3.10
+4. 它会给你一个地址：`你的用户名.pythonanywhere.com`
+5. 把 "WSGI configuration file" 里的内容全部删掉，改成：
+```python
+import sys
+path = '/home/你的用户名/order-system'
+if path not in sys.path:
+    sys.path.append(path)
+from server import app as application
+```
+（注意把"你的用户名"改成你注册的用户名）
+
+### 第4步：保存并启动
+1. 点绿色的 "Save" 按钮
+2. 点 "Reload" 按钮
+3. 打开 `https://你的用户名.pythonanywhere.com` 就能用了
+
+### 第5步：生成二维码
+1. 打开 https://cli.im （免费二维码生成器）
+2. 输入你的地址 `https://你的用户名.pythonanywhere.com`
+3. 生成二维码，打印出来贴在前台或桌上
+
+## 之后
+- 系统一直在云端跑，不需要你电脑开机
+- 老人手机打开 `你的用户名.pythonanywhere.com/admin` 就是商家后台
+- 顾客扫码直接点单
+- 免费版足够小店用，一天几十单完全没问题

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>订单支付</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,"PingFang SC",sans-serif; background:#f5f5f7; }
+.card { background:#fff; border-radius:12px; padding:20px; margin:14px; }
+.order-no { text-align:center; padding:16px 0; }
+.order-no .label { font-size:13px; color:#999; }
+.order-no .number { font-size:18px; font-weight:bold; margin-top:6px; }
+.amount { text-align:center; padding:14px 0; }
+.amount .label { font-size:13px; color:#666; }
+.amount .value { font-size:42px; font-weight:bold; color:#ff6b35; margin-top:4px; }
+.pay-steps { margin:16px 0; }
+.pay-step { display:flex; margin-bottom:14px; }
+.step-num { width:24px; height:24px; border-radius:50%; background:#ff6b35; color:#fff; text-align:center; line-height:24px; font-size:13px; margin-right:10px; flex-shrink:0; }
+.step-text { font-size:14px; color:#333; line-height:24px; }
+.step-text small { color:#999; }
+.confirm-btn { width:100%; background:#4caf50; color:#fff; border:none; padding:14px; border-radius:22px; font-size:16px; font-weight:bold; margin-top:10px; cursor:pointer; }
+.tip { font-size:12px; color:#999; text-align:center; margin-top:14px; line-height:1.6; }
+.success-card { text-align:center; padding:36px 20px; display:none; }
+.success-card .check { width:60px; height:60px; border-radius:50%; background:#07c160; color:#fff; font-size:32px; line-height:60px; margin:0 auto 14px; }
+.success-card h2 { font-size:19px; }
+.success-card .pickup { font-size:44px; font-weight:bold; color:#ff6b35; margin:14px 0; letter-spacing:3px; }
+.success-card .order-info { font-size:13px; color:#999; margin-top:6px; }
+</style>
+</head>
+<body>
+<div class="card" id="payCard">
+  <div class="order-no">
+    <div class="label">订单编号</div>
+    <div class="number">{{ order_no }}</div>
+  </div>
+  <div class="amount">
+    <div class="label">应付金额</div>
+    <div class="value" id="orderTotal">--</div>
+  </div>
+  <div class="pay-steps">
+    <div class="pay-step">
+      <div class="step-num">1</div>
+      <div class="step-text">请到前台扫码付款</div>
+    </div>
+    <div class="pay-step">
+      <div class="step-num">2</div>
+      <div class="step-text">付款金额请输入 <b id="amountHint">--</b> 元</div>
+    </div>
+    <div class="pay-step">
+      <div class="step-num">3</div>
+      <div class="step-text">付完后点击下方按钮确认<small>（店员会核对到账）</small></div>
+    </div>
+  </div>
+  <button class="confirm-btn" id="payBtn" onclick="doConfirm()">我已付款</button>
+  <div class="tip">* 店员确认收款后小票自动打印，请等待叫号取餐</div>
+</div>
+
+<div class="card success-card" id="successCard">
+  <div class="check">✓</div>
+  <h2>已收到您的付款请求</h2>
+  <div class="pickup" id="pickupNo">----</div>
+  <div class="order-info">请凭此号等待叫号取餐</div>
+  <div class="order-info">订单号：<span id="successOrderNo"></span></div>
+</div>
+
+<script>
+var orderNo = '{{ order_no }}';
+
+function loadOrder() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/order/' + orderNo, true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+      if (res.ok) {
+        document.getElementById('orderTotal').textContent = res.data.total.toFixed(2);
+        document.getElementById('amountHint').textContent = res.data.total.toFixed(2);
+      }
+    }
+  };
+  xhr.send();
+}
+
+function doConfirm() {
+  var btn = document.getElementById('payBtn');
+  btn.disabled = true;
+  btn.textContent = '确认中...';
+  // 通知后端：顾客已付款（等商家确认）
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/customer-paid/' + orderNo, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4) {
+      document.getElementById('payCard').style.display = 'none';
+      document.getElementById('successCard').style.display = 'block';
+      document.getElementById('pickupNo').textContent = orderNo.slice(-3);
+      document.getElementById('successOrderNo').textContent = orderNo;
+    }
+  };
+  xhr.send(JSON.stringify({}));
+}
+
+loadOrder();
+</script>
+</body>
+</html>

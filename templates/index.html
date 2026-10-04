@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ shop_name }} - 扫码点单</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:#f5f5f7; color:#333; padding-bottom:70px; }
+.header { background:#ff6b35; color:#fff; padding:18px 14px; }
+.header h1 { font-size:19px; font-weight:600; }
+.header .sub { font-size:12px; opacity:.9; margin-top:3px; }
+.cats { background:#fff; overflow-x:auto; border-bottom:1px solid #eee; white-space:nowrap; }
+.cat { display:inline-block; padding:12px 14px; font-size:14px; color:#666; cursor:pointer; }
+.cat.active { color:#ff6b35; font-weight:600; border-bottom:2px solid #ff6b35; }
+.section { margin:10px; }
+.section h2 { font-size:14px; color:#999; padding:6px 2px; }
+.item { background:#fff; border-radius:10px; padding:10px; margin-bottom:8px; overflow:hidden; }
+.item .inner { margin-left:90px; position:relative; }
+.item .img { width:80px; height:80px; border-radius:6px; background:#ffe0cc; float:left; text-align:center; line-height:80px; font-size:30px; }
+.item .name { font-size:15px; font-weight:500; }
+.item .desc { font-size:12px; color:#999; margin-top:3px; }
+.item .price { color:#ff6b35; font-size:16px; font-weight:600; margin-top:6px; }
+.item .price small { font-size:12px; }
+.add-btn { position:absolute; right:0; bottom:0; width:28px; height:28px; border-radius:50%; background:#ff6b35; color:#fff; border:none; font-size:18px; cursor:pointer; }
+.stepper { position:absolute; right:0; bottom:0; }
+.minus-btn { width:26px; height:26px; border-radius:50%; background:#fff; color:#ff6b35; border:1px solid #ff6b35; font-size:15px; cursor:pointer; }
+.qty-num { font-size:14px; font-weight:600; display:inline-block; width:24px; text-align:center; }
+.cart-bar { position:fixed; bottom:0; left:0; right:0; background:#2c2c2c; color:#fff; padding:10px 14px; z-index:200; }
+.cart-inner { max-width:600px; margin:0 auto; overflow:hidden; }
+.cart-left { float:left; }
+.cart-icon { width:42px; height:42px; border-radius:50%; background:#ff6b35; text-align:center; line-height:42px; font-size:20px; position:relative; float:left; margin-right:10px; }
+.cart-badge { position:absolute; top:-4px; right:-4px; background:#fff; color:#ff6b35; font-size:11px; min-width:18px; height:18px; border-radius:9px; line-height:18px; font-weight:bold; }
+.cart-total { font-size:18px; font-weight:600; line-height:42px; float:left; }
+.checkout-btn { float:right; background:#ff6b35; color:#fff; border:none; padding:10px 22px; border-radius:20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:5px; }
+.modal-mask { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); z-index:300; }
+.modal { background:#fff; position:absolute; bottom:0; left:0; right:0; border-radius:12px 12px 0 0; padding:18px; }
+.modal h3 { font-size:16px; margin-bottom:10px; }
+.cart-item { padding:10px 0; border-bottom:1px solid #f0f0f0; overflow:hidden; }
+.cart-item .left { float:left; }
+.cart-item .right { float:right; }
+.cart-item .name { font-size:14px; }
+.cart-item .price { color:#ff6b35; font-size:14px; margin-top:3px; }
+.note-input { width:100%; border:1px solid #eee; border-radius:6px; padding:10px; margin-top:10px; font-size:14px; }
+.submit-btn { width:100%; background:#ff6b35; color:#fff; border:none; padding:13px; border-radius:22px; font-size:15px; font-weight:600; margin-top:14px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1 id="shopName">{{ shop_name }}</h1>
+  <div class="sub">扫码点单</div>
+</div>
+<div class="cats" id="cats"></div>
+<div id="menuList"></div>
+
+<div class="cart-bar" id="cartBar" style="display:none">
+  <div class="cart-inner">
+    <div class="cart-left">
+      <div class="cart-icon">🛒<span class="cart-badge" id="cartBadge">0</span></div>
+      <div class="cart-total" id="cartTotal">¥0.00</div>
+    </div>
+    <button class="checkout-btn" id="checkoutBtn">去结算</button>
+  </div>
+</div>
+
+<div class="modal-mask" id="cartModal">
+  <div class="modal">
+    <h3>已选商品</h3>
+    <div id="cartItems"></div>
+    <input class="note-input" id="noteInput" placeholder="备注（不要葱/少辣等）">
+    <button class="submit-btn" id="submitOrder">提交订单</button>
+  </div>
+</div>
+
+<script>
+var menuData = [];
+var cart = {};
+
+function loadMenu() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/menu', true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+      menuData = res.data;
+      document.getElementById('shopName').textContent = res.shop_name;
+      renderCats();
+      renderMenu();
+    }
+  };
+  xhr.send();
+}
+
+function renderCats() {
+  var html = '';
+  for (var i = 0; i < menuData.length; i++) {
+    html += '<div class="cat' + (i===0?' active':'') + '" data-id="' + menuData[i].id + '" onclick="switchCat(' + menuData[i].id + ',this)">' + menuData[i].name + '</div>';
+  }
+  document.getElementById('cats').innerHTML = html;
+}
+
+function switchCat(id, el) {
+  var cats = document.getElementsByClassName('cat');
+  for (var i = 0; i < cats.length; i++) cats[i].className = 'cat';
+  el.className = 'cat active';
+  renderMenu(id);
+}
+
+function renderMenu(activeId) {
+  var html = '';
+  for (var c = 0; c < menuData.length; c++) {
+    var cat = menuData[c];
+    if (activeId && cat.id != activeId) continue;
+    html += '<div class="section"><h2>' + cat.name + '</h2>';
+    for (var i = 0; i < cat.items.length; i++) {
+      var p = cat.items[i];
+      var qty = cart[p.id] ? cart[p.id].qty : 0;
+      html += '<div class="item"><div class="img">🍽️</div><div class="inner">';
+      html += '<div class="name">' + p.name + '</div>';
+      html += '<div class="desc">' + (p.description||'') + '</div>';
+      html += '<div class="price"><small>¥</small>' + p.price.toFixed(2) + '</div>';
+      if (qty > 0) {
+        html += '<div class="stepper">';
+        html += '<button class="minus-btn" onclick="changeQty(' + p.id + ',-1)">−</button>';
+        html += '<span class="qty-num">' + qty + '</span>';
+        html += '<button class="add-btn" onclick="changeQty(' + p.id + ',1)">+</button>';
+        html += '</div>';
+      } else {
+        html += '<button class="add-btn" onclick="changeQty(' + p.id + ',1)">+</button>';
+      }
+      html += '</div></div>';
+    }
+    html += '</div>';
+  }
+  document.getElementById('menuList').innerHTML = html;
+}
+
+function changeQty(pid, delta) {
+  if (!cart[pid]) {
+    for (var c = 0; c < menuData.length; c++) {
+      for (var i = 0; i < menuData[c].items.length; i++) {
+        if (menuData[c].items[i].id == pid) {
+          cart[pid] = {name: menuData[c].items[i].name, price: menuData[c].items[i].price, qty: 0};
+        }
+      }
+    }
+  }
+  cart[pid].qty += delta;
+  if (cart[pid].qty <= 0) delete cart[pid];
+  var activeCat = document.querySelector('.cat.active');
+  renderMenu(activeCat ? parseInt(activeCat.getAttribute('data-id')) : null);
+  updateCartBar();
+}
+
+function updateCartBar() {
+  var bar = document.getElementById('cartBar');
+  var keys = Object.keys(cart);
+  if (keys.length === 0) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  var count = 0, total = 0;
+  for (var i = 0; i < keys.length; i++) {
+    count += cart[keys[i]].qty;
+    total += cart[keys[i]].qty * cart[keys[i]].price;
+  }
+  document.getElementById('cartBadge').textContent = count;
+  document.getElementById('cartTotal').textContent = '¥' + total.toFixed(2);
+}
+
+document.getElementById('checkoutBtn').onclick = function() {
+  var box = document.getElementById('cartItems');
+  var keys = Object.keys(cart);
+  if (keys.length === 0) { box.innerHTML = '<p style="text-align:center;color:#999;padding:20px">购物车为空</p>'; return; }
+  var html = '';
+  for (var i = 0; i < keys.length; i++) {
+    var it = cart[keys[i]];
+    html += '<div class="cart-item"><div class="left"><div class="name">' + it.name + '</div>';
+    html += '<div class="price">¥' + it.price.toFixed(2) + ' x ' + it.qty + '</div></div>';
+    html += '<div class="right"><button class="minus-btn" onclick="changeQty(' + keys[i] + ',-1);refreshCart()">−</button>';
+    html += '<span class="qty-num">' + it.qty + '</span>';
+    html += '<button class="add-btn" onclick="changeQty(' + keys[i] + ',1);refreshCart()">+</button></div></div>';
+  }
+  box.innerHTML = html;
+  document.getElementById('cartModal').style.display = 'block';
+};
+
+function refreshCart() { document.getElementById('checkoutBtn').onclick(); }
+
+document.getElementById('cartModal').onclick = function(e) {
+  if (e.target === this) this.style.display = 'none';
+};
+
+document.getElementById('submitOrder').onclick = function() {
+  var keys = Object.keys(cart);
+  if (keys.length === 0) return;
+  var items = [];
+  for (var i = 0; i < keys.length; i++) {
+    items.push({product_id: parseInt(keys[i]), qty: cart[keys[i]].qty});
+  }
+  var note = document.getElementById('noteInput').value;
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/order', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+      if (res.ok) {
+        cart = {};
+        window.location.href = '/pay/' + res.order_no;
+      } else {
+        alert(res.msg || '下单失败');
+      }
+    }
+  };
+  xhr.send(JSON.stringify({items: items, note: note, table_no: '堂食'}));
+};
+
+loadMenu();
+</script>
+</body>
+</html>

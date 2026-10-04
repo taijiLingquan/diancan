@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商家后台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,"PingFang SC",sans-serif; background:#f5f5f7; color:#333; }
+.topbar { background:#2c2c2c; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100; }
+.topbar h1 { font-size:16px; }
+.tabs { display:flex; }
+.tab { padding:6px 14px; border-radius:16px; cursor:pointer; font-size:13px; background:#444; margin-left:6px; }
+.tab.active { background:#ff6b35; }
+.filter-bar { background:#fff; padding:10px 16px; border-bottom:1px solid #eee; position:sticky; top:44px; z-index:99; }
+.status-tabs { display:flex; margin-bottom:8px; }
+.stab { padding:6px 14px; border-radius:14px; font-size:13px; cursor:pointer; background:#f5f5f5; color:#666; margin-right:8px; }
+.stab.active { background:#ff6b35; color:#fff; }
+.date-row { display:flex; align-items:center; }
+.date-row label { font-size:13px; color:#666; margin-right:8px; }
+.date-row input { padding:5px 8px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+.date-row button { margin-left:8px; padding:5px 12px; border:none; border-radius:6px; background:#f0f0f0; font-size:13px; cursor:pointer; }
+.container { max-width:900px; margin:0 auto; padding:12px; }
+.order-card { background:#fff; border-radius:10px; padding:14px; margin-bottom:10px; }
+.order-head { overflow:hidden; margin-bottom:8px; }
+.order-no { float:left; font-weight:600; font-size:15px; }
+.badge { float:right; padding:3px 10px; border-radius:10px; font-size:12px; }
+.badge.pending_pay { background:#fff3e0; color:#ff9800; }
+.badge.waiting_confirm { background:#e3f2fd; color:#1976d2; }
+.badge.paid { background:#e8f5e9; color:#4caf50; }
+.badge.completed { background:#f5f5f5; color:#999; }
+.badge.cancelled { background:#ffebee; color:#f44336; }
+.order-time { font-size:12px; color:#aaa; margin-bottom:6px; }
+.order-items { font-size:13px; color:#666; line-height:1.8; clear:both; }
+.order-foot { overflow:hidden; margin-top:8px; padding-top:8px; border-top:1px solid #f0f0f0; }
+.order-total { float:left; font-weight:600; color:#ff6b35; line-height:30px; }
+.order-actions { float:right; }
+.btn { padding:6px 12px; border-radius:14px; border:none; font-size:13px; cursor:pointer; margin-left:6px; }
+.btn-success { background:#4caf50; color:#fff; }
+.btn-danger { background:#f44336; color:#fff; }
+.btn-default { background:#f0f0f0; color:#666; }
+.empty { text-align:center; color:#999; padding:60px 0; }
+.product-table { width:100%; background:#fff; border-radius:10px; }
+.product-table th, .product-table td { padding:10px; text-align:left; border-bottom:1px solid #f0f0f0; font-size:14px; }
+.product-table th { background:#fafafa; color:#999; font-weight:500; }
+.add-form { background:#fff; border-radius:10px; padding:14px; margin-bottom:12px; }
+.add-form input, .add-form select { padding:8px; border:1px solid #ddd; border-radius:6px; font-size:14px; margin-bottom:8px; width:100%; }
+.stat-bar { display:flex; background:#fff; border-radius:10px; padding:12px; margin-bottom:12px; }
+.stat { flex:1; text-align:center; }
+.stat .num { font-size:20px; font-weight:700; color:#333; }
+.stat .label { font-size:12px; color:#999; margin-top:2px; }
+.stat.income .num { color:#ff6b35; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <h1>📊 商家后台</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('orders',this)">订单</div>
+    <div class="tab" onclick="showTab('products',this)">商品管理</div>
+  </div>
+</div>
+
+<div id="ordersTab">
+  <div class="filter-bar">
+    <div class="status-tabs">
+      <div class="stab active" data-st="all" onclick="filterStatus('all',this)">全部</div>
+      <div class="stab" data-st="active" onclick="filterStatus('active',this)">进行中</div>
+      <div class="stab" data-st="waiting_confirm" onclick="filterStatus('waiting_confirm',this)">待确认收款</div>
+      <div class="stab" data-st="completed" onclick="filterStatus('completed',this)">已完成</div>
+      <div class="stab" data-st="cancelled" onclick="filterStatus('cancelled',this)">已取消</div>
+    </div>
+    <div class="date-row">
+      <label>日期:</label>
+      <input type="date" id="datePick">
+      <button onclick="todayOrders()">今天</button>
+      <button onclick="clearDate()">全部日期</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stat-bar">
+      <div class="stat"><div class="num" id="statCount">0</div><div class="label">订单数</div></div>
+      <div class="stat income"><div class="num" id="statIncome">¥0</div><div class="label">营业额</div></div>
+      <div class="stat"><div class="num" id="statToday">0</div><div class="label">今日单</div></div>
+    </div>
+    <div id="orderList"></div>
+  </div>
+</div>
+
+<div id="productsTab" style="display:none">
+  <div class="container">
+    <div class="add-form">
+      <input name="name" placeholder="商品名">
+      <input name="price" type="number" step="0.01" placeholder="价格">
+      <select name="category">
+        <option value="1">热销推荐</option>
+        <option value="2">主食</option>
+        <option value="3">小吃</option>
+        <option value="4">饮品</option>
+      </select>
+      <button class="btn btn-success" onclick="addProduct()" style="width:100%">添加商品</button>
+    </div>
+    <table class="product-table">
+      <thead><tr><th>ID</th><th>名称</th><th>价格</th><th>状态</th><th>操作</th></tr></thead>
+      <tbody id="productList"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+var curStatus = 'all';
+var curDate = '';
+var allOrders = [];  // 缓存全部订单，前端本地筛选
+
+function showTab(name, el) {
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab';
+  el.className = 'tab active';
+  document.getElementById('ordersTab').style.display = name === 'orders' ? 'block' : 'none';
+  document.getElementById('productsTab').style.display = name === 'products' ? 'block' : 'none';
+  if (name === 'products') loadProducts();
+}
+
+function filterStatus(st, el) {
+  curStatus = st;
+  var stabs = document.querySelectorAll('.stab');
+  for (var i = 0; i < stabs.length; i++) stabs[i].className = 'stab';
+  el.className = 'stab active';
+  renderOrders(filterOrders());  // 本地筛选，不请求后端
+}
+
+function todayOrders() {
+  var d = new Date();
+  var m = (d.getMonth()+1 < 10 ? '0' : '') + (d.getMonth()+1);
+  var day = (d.getDate() < 10 ? '0' : '') + d.getDate();
+  curDate = d.getFullYear() + '-' + m + '-' + day;
+  document.getElementById('datePick').value = curDate;
+  renderOrders(filterOrders());
+}
+
+function clearDate() {
+  curDate = '';
+  document.getElementById('datePick').value = '';
+  renderOrders(filterOrders());
+}
+
+document.getElementById('datePick').onchange = function() {
+  curDate = this.value;
+  renderOrders(filterOrders());
+};
+
+// 本地筛选逻辑
+function filterOrders() {
+  var result = [];
+  for (var i = 0; i < allOrders.length; i++) {
+    var o = allOrders[i];
+    if (curStatus === 'active') {
+      if (o.status !== 'pending_pay' && o.status !== 'waiting_confirm' && o.status !== 'paid') continue;
+    } else if (curStatus !== 'all') {
+      if (o.status !== curStatus) continue;
+    }
+    if (curDate) {
+      if (!o.created_at || o.created_at.indexOf(curDate) !== 0) continue;
+    }
+    result.push(o);
+  }
+  return result;
+}
+
+function loadOrders() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/admin/orders?status=all', true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+      allOrders = res.data;
+      renderOrders(filterOrders());
+    }
+  };
+  xhr.send();
+}
+
+function renderOrders(orders) {
+  var list = document.getElementById('orderList');
+  var count = orders.length;
+  var income = 0;
+  var todayCount = 0;
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' +
+    ((today.getMonth()+1<10?'0':'')+(today.getMonth()+1)) + '-' +
+    ((today.getDate()<10?'0':'')+today.getDate());
+
+  for (var i = 0; i < orders.length; i++) {
+    if (orders[i].status !== 'cancelled') income += orders[i].total;
+    if (orders[i].created_at && orders[i].created_at.indexOf(todayStr) === 0) todayCount++;
+  }
+  document.getElementById('statCount').textContent = count;
+  document.getElementById('statIncome').textContent = '¥' + income.toFixed(2);
+  document.getElementById('statToday').textContent = todayCount;
+
+  if (!orders.length) {
+    list.innerHTML = '<div class="empty">暂无订单</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < orders.length; i++) {
+    var o = orders[i];
+    html += '<div class="order-card">';
+    html += '<div class="order-head"><span class="order-no">#' + o.order_no + '</span>';
+    html += '<span class="badge ' + o.status + '">' + statusText(o.status) + '</span></div>';
+    html += '<div class="order-time">' + o.created_at + (o.table_no ? ' · ' + o.table_no : '') + '</div>';
+    html += '<div class="order-items">';
+    for (var j = 0; j < o.items.length; j++) {
+      var it = o.items[j];
+      html += it.name + ' x' + it.qty + ' ￥' + (it.price*it.qty).toFixed(2) + '<br>';
+    }
+    if (o.note) html += '<span style="color:#ff9800">备注：' + o.note + '</span>';
+    html += '</div>';
+    html += '<div class="order-foot"><div class="order-total">￥' + o.total.toFixed(2) + '</div>';
+    html += '<div class="order-actions">';
+    html += '<button class="btn btn-default" onclick="reprint(\'' + o.order_no + '\')">重打</button>';
+    if (o.status === 'waiting_confirm') html += '<button class="btn btn-success" onclick="setStatus(\'' + o.order_no + '\',\'paid\')">确认收款</button>';
+    if (o.status === 'paid') html += '<button class="btn btn-success" onclick="setStatus(\'' + o.order_no + '\',\'completed\')">完成</button>';
+    if (o.status === 'pending_pay') html += '<button class="btn btn-danger" onclick="setStatus(\'' + o.order_no + '\',\'cancelled\')">取消</button>';
+    html += '</div></div></div>';
+  }
+  list.innerHTML = html;
+}
+
+function statusText(s) {
+  var m = {pending_pay:'待支付', waiting_confirm:'待确认收款', paid:'已支付', completed:'已完成', cancelled:'已取消'};
+  return m[s] || s;
+}
+
+function setStatus(no, st) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/admin/orders/' + no + '/status', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() { if (xhr.readyState == 4) loadOrders(); };
+  xhr.send(JSON.stringify({status: st}));
+}
+
+function reprint(no) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/reprint/' + no, true);
+  xhr.onreadystatechange = function() { if (xhr.readyState == 4) alert('已发送打印指令'); };
+  xhr.send();
+}
+
+function loadProducts() {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', '/api/admin/products', true);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == 4 && xhr.status == 200) {
+      var res = JSON.parse(xhr.responseText);
+      var html = '';
+      for (var i = 0; i < res.data.length; i++) {
+        var p = res.data[i];
+        html += '<tr><td>' + p.id + '</td><td>' + p.name + '</td><td>￥' + p.price.toFixed(2) + '</td>';
+        html += '<td>' + (p.available ? '在售' : '已下架') + '</td>';
+        html += '<td><button class="btn btn-default" onclick="toggleProduct(' + p.id + ',' + (p.available?0:1) + ')">' + (p.available?'下架':'上架') + '</button></td></tr>';
+      }
+      document.getElementById('productList').innerHTML = html;
+    }
+  };
+  xhr.send();
+}
+
+function addProduct() {
+  var name = document.querySelector('.add-form input[name=name]').value;
+  var price = document.querySelector('.add-form input[name=price]').value;
+  var cat = document.querySelector('.add-form select[name=category]').value;
+  if (!name || !price) return alert('请填写名称和价格');
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/admin/products', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() { if (xhr.readyState == 4) loadProducts(); };
+  xhr.send(JSON.stringify({name: name, price: parseFloat(price), category_id: parseInt(cat)}));
+}
+
+function toggleProduct(id, avail) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', '/api/admin/products/' + id, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onreadystatechange = function() { if (xhr.readyState == 4) loadProducts(); };
+  xhr.send(JSON.stringify({name: '', price: 0, description: '', available: avail}));
+}
+
+// 默认加载全部订单
+loadOrders();
+setInterval(loadOrders, 15000);
+</script>
+</body>
+</html>
