@@ -26,6 +26,9 @@ def load_config():
 
 CONFIG = load_config()
 
+# Vercel导入时初始化数据库
+init_db()
+
 
 # ============ 数据库 ============
 def get_db():
@@ -337,7 +340,6 @@ def api_reprint(order_no):
 
 
 if __name__ == "__main__":
-    init_db()
     import os
     port = int(os.environ.get("PORT", CONFIG["port"]))
     print(f"=" * 50)
